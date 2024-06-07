@@ -1,0 +1,433 @@
+{% extends 'services/base_generic.html' %} {% block content %}
+<title>Calculate Amount</title>
+<link
+  href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css"
+  rel="stylesheet"
+  integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC"
+  crossorigin="anonymous"
+/>
+<style>
+  #update-profile-container {
+    position: absolute;
+    z-index: 999;
+  }
+</style>
+<div class="container">
+  <h1 class="text-center mb-4">Cart</h1>
+  <div class="table-responsive">
+    <table class="table table-bordered">
+      <thead class="table-dark">
+        <tr>
+          <th>Service Name</th>
+          <th>Quantity</th>
+          <th>Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for service in services %}
+        <tr>
+          <td>{{ service.service_name }}</td>
+          <script>
+            console.log(
+              "Rate data for service {{ service.id }}:",
+              "{{ service.rates_json|escapejs }}"
+            );
+          </script>
+          <td>
+            <input
+              type="number"
+              class="form-control cart-quantity"
+              id="quantity_{{ service.id }}"
+              data-service-id="{{ service.id }}"
+              data-rate="{{ service.rates_json|escapejs }}"
+              oninput="calculateAmount('{{ service.id }}', '{{ service.rates_json|escapejs }}')"
+            />
+          </td>
+          <td id="amount_{{ service.id }}">0</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr>
+          <td colspan="2" class="text-end"><strong>Total Amount:</strong></td>
+          <td id="total_amount">0</td>
+        </tr>
+        <tr>
+          <td colspan="2" class="text-end"><strong>Add Promo Code:</strong></td>
+          <td>
+            <input
+              type="text"
+              id="promo_code"
+              class="form-control"
+              oninput="applyPromoCode()"
+            />
+          </td>
+        </tr>
+        <tr>
+          <td colspan="2" class="text-end"><strong>Discount:</strong></td>
+          <td id="discount">0</td>
+        </tr>
+        <tr>
+          <td colspan="2" class="text-end"><strong>Grand Total:</strong></td>
+          <td id="grand_total">0</td>
+        </tr>
+        <tr>
+          <td colspan="3" class="text-center">
+            <button class="btn btn-dark" onclick="checkout()">
+              Proceed to Pay
+            </button>
+          </td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</div>
+
+<span id="update-profile-container" style="display: none">
+  <iframe
+    id="update-profile-iframe"
+    src="{% url 'update_profile' %}"
+    width="100%"
+    height="460px"
+    frameborder="0"
+  ></iframe>
+</span>
+
+<script>
+  window.addEventListener("message", function (event) {
+    if (event.data === "profileUpdated") {
+      // Hide the iframe
+      const iframeContainer = document.getElementById(
+        "update-profile-container"
+      );
+      if (iframeContainer) {
+        iframeContainer.style.display = "none";
+
+        // Show completion message to the user
+        alert("Profile updated successfully!");
+
+        // Initiate checkProfileCompletion() after a slight delay
+        setTimeout(() => {
+          checkout();
+        }, 500); // Adjust the delay time as needed
+      }
+    }
+  });
+</script>
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script>
+  const checkProfileCompletionUrl = "{% url 'check_profile_completion' %}";
+  const paymentSuccessUrl = "{% url 'payment_success' %}";
+  const updateProfileUrl = "{% url 'update_profile' %}";
+  const generateRazorpayOrderUrl = "{% url 'generate_order' %}";
+  const updatePaymentStatusUrl = "{% url 'update_payment_status' %}";
+
+  function checkProfileCompletion() {
+    return fetch("{% url 'check_profile_completion' %}", {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": "{{ csrf_token }}",
+      },
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        console.log("Profile Completion Data:", data);
+        return data.profile_complete;
+      })
+      .catch((error) => {
+        console.error("Error checking profile completion:", error);
+        throw error;
+      });
+  }
+
+  function saveCartData(cartData) {
+    return fetch("{% url 'save_cart_data' %}", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": "{{ csrf_token }}",
+      },
+      body: JSON.stringify(cartData),
+    })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("Network response was not ok");
+        }
+        return response.json();
+      })
+      .then((data) => {
+        console.log("Cart data saved:", data);
+        return data;
+      })
+      .catch((error) => {
+        console.error("Error saving cart data:", error);
+        throw error;
+      });
+  }
+
+  function updatePaymentStatus(response, status, cartData) {
+    fetch(updatePaymentStatusUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": "{{ csrf_token }}",
+          },
+          body: JSON.stringify({'order_id': status == 'Success' ? response.razorpay_order_id : response.error.metadata.order_id,'payment_id': status == 'Success' ? response.razorpay_payment_id : response.error.metadata.payment_id, 'status': status, 'signature': status == 'Success' ? response.razorpay_signature : ''}),
+        }).then(() => {
+          if (status == 'Success') { 
+            saveCartData(cartData);
+            alert('Your payment was made successfully!')
+          } else {
+            alert(`${response.error.description}, ${response.error.reason}`)
+          }
+        })
+  }
+
+  function checkout() {
+    console.log("Proceed to Pay button clicked");
+
+    const cartItems = [];
+
+    document.querySelectorAll(".cart-quantity").forEach((input) => {
+      const serviceName = input
+        .closest("tr")
+        .querySelector("td:first-child").innerText;
+      const quantity = parseInt(input.value, 10);
+
+      try {
+        const amount = parseFloat(
+          input.closest("tr").querySelector("td:last-child").innerText
+        );
+
+        if (quantity > 0) {
+          cartItems.push({
+            service_name: serviceName,
+            quantity: quantity,
+            amount: amount,
+          });
+        }
+      } catch (error) {
+        console.error("Error parsing rate data:", error);
+      }
+    });
+
+    const promoCode = document.getElementById("promo_code").value;
+    const totalAmount = parseFloat(
+      document.getElementById("total_amount").innerText
+    );
+    const discount = parseFloat(document.getElementById("discount").innerText);
+    const grandTotal = parseFloat(
+      document.getElementById("grand_total").innerText
+    );
+
+    const cartData = {
+      cart_items: cartItems,
+      promo_code: promoCode,
+      total_amount: totalAmount,
+      discount: discount,
+      grand_total: grandTotal,
+    };
+
+    console.log("Data to be sent to the server:", cartData);
+
+    // checkProfileCompletion()
+    //   .then((profileComplete) => {
+    //     if (profileComplete) {
+    //       console.log("Profile is complete. Proceeding to save cart data.");
+    //       return saveCartData(cartData);
+    //     } else {
+    //       console.log(
+    //         "Profile is not complete. Redirecting to update profile."
+    //       );
+    //       window.location.href = "{% url 'update_profile' %}";
+    //       throw new Error("Profile not complete");
+    //     }
+    //   })
+    //   .then(() => {
+    //     console.log(
+    //       "Cart data saved successfully. Redirecting to payment success."
+    //     );
+    //     window.location.href = "{% url 'payment_success' %}";
+    //   })
+    //   .catch((error) => console.error("Checkout process failed:", error));
+    checkProfileCompletion()
+      .then((profileComplete) => {
+        if (profileComplete) {
+          console.log("Profile is complete. Proceeding to save cart data.");
+        } else {
+          console.log(
+            "Profile is not complete. Showing update profile iframe."
+          );
+          document.getElementById("update-profile-container").style.display =
+            "block";
+          throw new Error("Profile not complete");
+        }
+      })
+      .then((savedCart) => {
+        console.log(
+          "Cart data saved successfully. Redirecting to payment success."
+        );
+        fetch(generateRazorpayOrderUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": "{{ csrf_token }}",
+          },
+          body: JSON.stringify(cartData),
+        })
+          .then((response) => {
+            if (!response.ok) {
+              throw new Error("Network response was not ok");
+            }
+            return response.json();
+          })
+          .then((data) => {
+            console.log("order id:", data);
+            var options = {
+                "key": data.key, // Enter the Key ID generated from the Dashboard
+                "amount": data.amount, // Amount is in currency subunits. Default currency is INR. Hence, 50000 refers to 50000 paise
+                "currency": "INR",
+                "name": "U4RAD", //your business name
+                "description": "Payment for services",
+                "image": "https://example.com/your_logo",
+                "order_id": data.order_id, //This is a sample Order ID. Pass the `id` obtained in the response of Step 1
+                "handler": function (response){
+                  updatePaymentStatus(response, "Success", cartData)
+                },
+                "prefill": data.user,
+                "notes": {
+                    "address": "U4RAD Office"
+                },
+                "theme": {
+                    "color": "#3399cc"
+                }
+            };
+            var rzp1 = new Razorpay(options);
+            rzp1.on('payment.failed', function (response){
+              updatePaymentStatus(response, "Failure", null)
+            });
+            rzp1.open();
+          })
+          .catch((error) => {
+            console.error("Error generating order!:", error);
+            throw error;
+          });
+      })
+      .catch((error) => console.error("Checkout process failed:", error));
+  }
+
+  function calculateAmount(serviceId, rateData) {
+    const quantityInput = document.getElementById(`quantity_${serviceId}`);
+    const amountDisplay = document.getElementById(`amount_${serviceId}`);
+    const quantity = parseInt(quantityInput.value);
+
+    console.log(
+      "Calculating amount for serviceId:",
+      serviceId,
+      "with rateData:",
+      rateData
+    );
+
+    if (!rateData) {
+      console.error("rateData is empty or undefined");
+      return;
+    }
+
+    if (isNaN(quantity) || quantity <= 0) {
+      amountDisplay.innerText = "Invalid quantity";
+      return;
+    }
+
+    const rates = JSON.parse(rateData);
+    let rate = null;
+
+    for (const r of rates) {
+      if (quantity >= r.min_quantity && quantity <= r.max_quantity) {
+        rate = r.rate;
+        break;
+      }
+    }
+
+    if (rate !== null) {
+      const amount = Math.floor(quantity * rate);
+      amountDisplay.innerText = `${amount}`;
+    } else {
+      amountDisplay.innerText = "No rate available";
+    }
+    updateTotalAmount();
+  }
+
+  function updateTotalAmount() {
+    let totalAmount = 0;
+    const amountElements = document.querySelectorAll('[id^="amount_"]');
+
+    amountElements.forEach((element) => {
+      const amountText = element.innerText;
+      const amount = parseFloat(amountText);
+      if (!isNaN(amount)) {
+        totalAmount += amount;
+      }
+    });
+
+    document.getElementById("total_amount").innerText = `${totalAmount}`;
+    applyPromoCode();
+  }
+
+  function applyPromoCode() {
+    const promoCode = document.getElementById("promo_code").value;
+    let discount = 0;
+    const totalAmount = parseFloat(
+      document.getElementById("total_amount").innerText
+    );
+    if (isNaN(totalAmount)) {
+      document.getElementById("grand_total").innerText = "Invalid total amount";
+      return;
+    }
+    if (promoCode === "XRAI10") {
+      discount = totalAmount * 0.1;
+    }
+    const grandTotal = totalAmount - discount;
+    document.getElementById("discount").innerText = `${discount}`;
+    document.getElementById("grand_total").innerText = `${grandTotal}`;
+  }
+
+  function updateCart(serviceId, quantity, amount) {
+    let cart = JSON.parse(localStorage.getItem("cart") || "[]");
+    const index = cart.findIndex((item) => item.serviceId === serviceId);
+
+    if (index === -1) {
+      cart.push({ serviceId, quantity, amount });
+    } else {
+      cart[index].quantity = quantity;
+      cart[index].amount = amount;
+    }
+
+    // Update the total amount in localStorage as well
+    const totalAmount = cart.reduce((acc, item) => acc + item.amount, 0);
+    localStorage.setItem("cart", JSON.stringify(cart));
+    localStorage.setItem("totalAmount", totalAmount);
+
+    // You may want to update the UI here as well if needed
+  }
+
+  function loadCart() {
+    const cart = JSON.parse(localStorage.getItem("cart") || "[]");
+    cart.forEach((item) => {
+      const quantityInput = document.getElementById(
+        `quantity_${item.serviceId}`
+      );
+      if (quantityInput) {
+        quantityInput.value = item.quantity;
+        document.getElementById(
+          `amount_${item.serviceId}`
+        ).innerText = `${item.amount}`;
+      }
+    });
+    updateTotalAmount();
+  }
+
+  document.addEventListener("DOMContentLoaded", loadCart);
+</script>
+
+{% endblock %}

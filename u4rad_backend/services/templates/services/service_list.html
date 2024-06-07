@@ -1,0 +1,17 @@
+{% extends 'services/base_generic.html' %}
+
+{% block content %}
+{% load static %}
+  <h2>Services</h2>
+  <a href="{% url 'service_create' %}">Add New Service</a>
+  <ul>
+    {% for service in services %}
+      <li>
+        {{ service.service_name }} ({{ service.is_active }}) -
+        <a href="{% url 'service_update' service.id %}">Edit</a> |
+        <a href="{% url 'service_delete' service.id %}">Delete</a> |
+        <a href="{% url 'service_rate_list' service.id %}">View Rates</a>
+      </li>
+    {% endfor %}
+  </ul>
+{% endblock %}

@@ -1,0 +1,110 @@
+{% extends 'services/base_generic.html' %} {% block content %}
+<title>Calculate Amount</title>
+<link
+  href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css"
+  rel="stylesheet"
+  integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC"
+  crossorigin="anonymous"
+/>
+<script>
+  function calculateAmount(serviceId, rateData) {
+    const quantityInput = document.getElementById(`quantity_${serviceId}`);
+    const amountDisplay = document.getElementById(`amount_${serviceId}`);
+    const quantity = parseInt(quantityInput.value);
+
+    if (isNaN(quantity) || quantity <= 0) {
+      amountDisplay.innerText = "Invalid quantity";
+      return;
+    }
+
+    const rates = JSON.parse(rateData);
+    let rate = null;
+
+    for (const r of rates) {
+      if (quantity >= r.min_quantity && quantity <= r.max_quantity) {
+        rate = r.rate;
+        break;
+      }
+    }
+
+    if (rate !== null) {
+      const amount = Math.floor(quantity * rate);
+      amountDisplay.innerText = `${amount}`;
+    } else {
+      amountDisplay.innerText = "No rate available";
+    }
+    updateTotalAmount();
+  }
+
+  function updateTotalAmount() {
+    let totalAmount = 0;
+    const amountElements = document.querySelectorAll('[id^="amount_"]');
+
+    amountElements.forEach((element) => {
+      const amountText = element.innerText;
+      const amount = parseFloat(amountText);
+      if (!isNaN(amount)) {
+        totalAmount += amount;
+      }
+    });
+
+    document.getElementById("total_amount").innerText = `${totalAmount}`;
+  }
+
+  function addToCart() {
+    const services = [];
+    document.querySelectorAll('[id^="quantity_"]').forEach((input) => {
+      const serviceId = input.id.split('_')[1];
+      const quantity = parseInt(input.value);
+      if (!isNaN(quantity) && quantity > 0) {
+        const amount = parseFloat(document.getElementById(`amount_${serviceId}`).innerText);
+        services.push({ serviceId, quantity, amount });
+      }
+    });
+    localStorage.setItem('cart', JSON.stringify(services));
+    window.location.href = "{% url 'cart' %}";
+  }
+</script>
+<div class="container mt-10">
+  <h1 class="text-center mb-4">Rate Card</h1>
+  <div class="table-responsive">
+    <table class="table table-bordered">
+      <thead class="table-dark">
+        <tr>
+          <th>Service Name</th>
+          <th>Quantity</th>
+          <th>Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for service in services %}
+        <tr>
+          <td>{{ service.service_name }}</td>
+          <td>
+            <input
+              type="number"
+              class="form-control"
+              id="quantity_{{ service.id }}"
+              oninput="calculateAmount('{{ service.id }}', '{{ service.rates_json|escapejs }}')"
+            />
+          </td>
+          <td id="amount_{{ service.id }}">0</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr>
+          <td colspan="2" class="text-end"><strong>Total Amount:</strong></td>
+          <td id="total_amount">0</td>
+        </tr>
+        <tr>
+          <td colspan="3" class="text-center">
+            <button class="btn btn-dark mt-3 text-center" onclick="addToCart()">Add to Cart</button>
+          </td>
+        </tr>
+      </tfoot>
+    </table>
+    
+  </div>
+</div>
+{% endblock %}

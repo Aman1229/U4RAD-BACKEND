@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
+    <style>
+
+        .btn-signup:hover {
+           background-color: black;
+           color: white;
+        }
+        .gradient-custom-2 {
+            /* fallback for old browsers */
+            background: #ff0000;
+            color: white;
+
+            /* Chrome 10-25, Safari 5.1-6 */
+            background: -webkit-linear-gradient(to right,
+                    #ff0000);
+
+            /* W3C, IE 10+/ Edge, Firefox 16+, Chrome 26+, Opera 12+, Safari 7+ */
+            background: linear-gradient(to right,
+                    #ff0000);
+        }
+
+        @media (min-width: 768px) {
+            .gradient-form {
+                height: 100vh !important;
+            }
+        }
+
+        @media (min-width: 769px) {
+            .gradient-custom-2 {
+                border-top-right-radius: 0.3rem;
+                border-bottom-right-radius: 0.3rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <section class="h-100 gradient-form" style="background-color: #534f4f">
+        <div class="container py-5 h-100">
+            <div class="row d-flex justify-content-center align-items-center h-100">
+                <div class="col-xl-10">
+                    <div class="card rounded-3 text-black">
+                        <div class="row g-0">
+                            <div class="col-lg-6">
+                                <div class="card-body p-md-5 mx-md-4">
+                                    <div class="text-center">
+                                        <img src="https://u4rad.com/static/media/Logo.c9920d154c922ea9e355.png"
+                                            style="width: 185px" alt="logo" />
+                                        <h4 class="mt-1 mb-5 pb-1">We are The U4RAD team</h4>
+                                    </div>
+
+                                    <form id="loginForm" method="POST" action="{% url 'login' %}">
+                                        {% csrf_token %} {% if error %}
+                                        <div class="alert alert-danger" role="alert">
+                                            {{ error }}
+                                        </div>
+                                        {% endif %}
+                                        <p>Please login to your account</p>
+
+                                        <div data-mdb-input-init class="form-outline mb-4 form-group">
+                                            <input type="text" id="phone" name="phone" class="form-control"
+                                                placeholder="Phone number" required />
+                                            <label class="form-label" for="phone">Username</label>
+                                        </div>
+
+                                        <div data-mdb-input-init class="form-outline mb-4 form-group show-password"
+                                            id="password-field" style="display: none">
+                                            <input type="password" id="password" name="password" class="form-control"
+                                                oninput="toggleCheckboxOption()" />
+                                            <label class="form-label" for="password">Password</label>
+                                            <span class="checkbox-btn">
+                                                <input type="checkbox" id="showPasswordCheckbox"
+                                                    onclick="myFunction()" />
+                                            </span>
+                                        </div>
+
+                                        <div data-mdb-input-init class="form-outline mb-4 form-group show-password"
+                                            id="new-password-field" style="display: none">
+                                            <input type="password" id="new_password" name="new_password"
+                                                class="form-control" oninput="toggleCheckboxOption()" />
+                                            <label class="form-label" for="new_password">Create Password</label>
+                                            <span class="checkbox-btn">
+                                                <input type="checkbox" id="showPasswordCheckbox"
+                                                    onclick="myFunction()" />
+                                            </span>
+                                        </div>
+
+                                        <div class="text-center pt-1 mb-5 pb-1">
+                                            <button data-mdb-button-init data-mdb-ripple-init
+                                                class="btn btn-signup btn-block fa-lg gradient-custom-2 mb-3 "
+                                                id="loginButton" type="submit">
+                                                Log in
+                                            </button>
+                                            <div class="spinner-grow text-warning" role="status" id="spinner"
+                                                style="display: none">
+                                                <span class="sr-only"></span>
+                                            </div>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                            <div class="col-lg-6 d-flex align-items-center gradient-custom-2">
+                                <div class="text-white px-3 py-4 p-md-5 mx-md-4">
+                                    <h4 class="mb-4">Radiology & Cardiology Reporting</h4>
+                                    <p class="small mb-0">
+                                        Explore the seamless reporting services offered by U4RAD Technologies for your CT, MRI, and XRAY cases, ensuring top-notch quality reports with just a few clicks. Answer a few questions, select the modality and number of cases to be reported, and you're done!
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            var loginForm = document.getElementById("loginForm");
+            var loginButton = document.getElementById("loginButton");
+            var spinner = document.getElementById("spinner");
+
+            loginForm.addEventListener("submit", function () {
+                spinner.style.display = "inline-block";
+                loginButton.style.display = "none"; // Hide the login button
+            });
+
+            document.getElementById("phone").addEventListener("input", function () {
+                var phone = this.value.trim();
+                if (phone.length > 0) {
+                    fetch(`/check_user_exists/?phone=${phone}`)
+                        .then((response) => response.json())
+                        .then((data) => {
+                            if (data.exists) {
+                                document.getElementById("password-field").style.display =
+                                    "block";
+                                document.getElementById("new-password-field").style.display =
+                                    "none";
+                            } else {
+                                document.getElementById("password-field").style.display =
+                                    "none";
+                                document.getElementById("new-password-field").style.display =
+                                    "block";
+                            }
+                        });
+                }
+            });
+        });
+
+        function toggleCheckboxOption() {
+            var passwordInput = document.getElementById("password");
+            var checkboxOption = document.getElementById("showPasswordCheckbox");
+
+            if (passwordInput.value.trim().length > 0) {
+                checkboxOption.style.display = "inline-block";
+            } else {
+                checkboxOption.style.display = "none";
+            }
+        }
+
+        function myFunction() {
+            var x = document.getElementById("password");
+            if (x.type === "password") {
+                x.type = "text";
+            } else {
+                x.type = "password";
+            }
+        }
+    </script>
+</body>
+
+</html>
+
+<!-- <div class="container">
+    <div class="row">
+        <div class="col-lg-4 offset-lg-4">
+            <div class="card">
+                <div class="card-body">
+                    <h1>Login Account</h1>
+                    <div class="loader"></div>
+                    <div class="overlay"></div>
+
+                    <form id="loginForm" method="POST" action="{% url 'login' %}">
+                        {% csrf_token %}
+                        {% if error %}
+                            <div class="alert alert-danger" role="alert">{{ error }}</div>
+                        {% endif %}
+                        <div class="form-group">
+                            <label for="phone">Phone Number</label>
+                            <input type="text" id="phone" name="phone" class="form-control" placeholder="1234567890" required>
+                        </div>
+
+                        <div class="form-group show-password" id="password-field" style="display:none;">
+                            <label for="password">Password</label>
+                            <input type="password" id="password" name="password" class="form-control" oninput="toggleCheckboxOption()">
+                            <span class="checkbox-btn">
+                                <input type="checkbox" id="showPasswordCheckbox" onclick="myFunction()">
+                            </span>
+                        </div>
+
+                        <div class="form-group show-password" id="new-password-field" style="display:none;">
+                            <label for="new_password">Create Password</label>
+                            <input type="password" id="new_password" name="new_password" class="form-control">
+                        </div>
+
+                        <center>
+                            <button type="submit" class="btn btn-signup" id="loginButton" style="outline: none;">Login</button>
+                            <div class="spinner-grow text-warning" role="status" id="spinner" style="display: none;">
+                                <span class="sr-only"></span>
+                            </div>
+                        </center>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div> -->

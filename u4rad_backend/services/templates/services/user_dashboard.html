@@ -1,0 +1,21 @@
+{% extends 'services/base_generic.html' %}
+
+{% block content %}
+{% load static %}
+<table>
+    <thead>
+        <tr>
+            <th>Modality</th>
+            <th>Expected Cases</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for item in cart_items %}
+        <tr>
+            <td>{{ item.service.service_name }}</td>
+            <td>{{ item.quantity }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

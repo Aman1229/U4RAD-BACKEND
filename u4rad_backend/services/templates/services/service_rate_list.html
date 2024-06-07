@@ -1,0 +1,15 @@
+{% extends 'services/base_generic.html' %}
+
+{% block content %}
+  <h2>{{ service.service_name }} Rates</h2>
+  <a href="{% url 'service_rate_create' service.id %}">Add New Rate</a>
+  <ul>
+    {% for rate in rates %}
+      <li>
+        {{ rate.min_quantity }} - {{ rate.max_quantity }} : {{ rate.rate }} -
+        <a href="{% url 'service_rate_update' service.id rate.id %}">Edit</a> |
+        <a href="{% url 'service_rate_delete' service.id rate.id %}">Delete</a>
+      </li>
+    {% endfor %}
+  </ul>
+{% endblock %}
