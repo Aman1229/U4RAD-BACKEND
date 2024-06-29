@@ -7,9 +7,38 @@
   crossorigin="anonymous"
 />
 <style>
-  #update-profile-container {
+  .container {
+    padding: 15px;
+    margin-top: 5rem;
+    background-color: aliceblue;
+  }
+  /* #update-profile-container {
     position: absolute;
     z-index: 999;
+    justify-content: center;
+  } */
+
+  #update-profile-container {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 999;
+    width: 80%;
+    max-width: 400px;
+    height: 80%;
+    max-height: 460px;
+    background-color: white;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
+    border-radius: 8px;
+    padding: 10px;
+  }
+
+  #update-profile-iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
   }
 </style>
 <div class="container">
@@ -88,7 +117,7 @@
     id="update-profile-iframe"
     src="{% url 'update_profile' %}"
     width="100%"
-    height="460px"
+    height="100%"
     frameborder="0"
   ></iframe>
 </span>
@@ -168,20 +197,32 @@
 
   function updatePaymentStatus(response, status, cartData) {
     fetch(updatePaymentStatusUrl, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-CSRFToken": "{{ csrf_token }}",
-          },
-          body: JSON.stringify({'order_id': status == 'Success' ? response.razorpay_order_id : response.error.metadata.order_id,'payment_id': status == 'Success' ? response.razorpay_payment_id : response.error.metadata.payment_id, 'status': status, 'signature': status == 'Success' ? response.razorpay_signature : ''}),
-        }).then(() => {
-          if (status == 'Success') { 
-            saveCartData(cartData);
-            alert('Your payment was made successfully!')
-          } else {
-            alert(`${response.error.description}, ${response.error.reason}`)
-          }
-        })
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": "{{ csrf_token }}",
+      },
+      body: JSON.stringify({
+        order_id:
+          status == "Success"
+            ? response.razorpay_order_id
+            : response.error.metadata.order_id,
+        payment_id:
+          status == "Success"
+            ? response.razorpay_payment_id
+            : response.error.metadata.payment_id,
+        status: status,
+        signature: status == "Success" ? response.razorpay_signature : "",
+      }),
+    }).then(() => {
+      if (status == "Success") {
+        saveCartData(cartData);
+        alert("Your payment was made successfully!");
+        window.location.href = "{% url 'user_dashboard' %}";
+      } else {
+        alert(`${response.error.description}, ${response.error.reason}`);
+      }
+    });
   }
 
   function checkout() {
@@ -230,27 +271,6 @@
     };
 
     console.log("Data to be sent to the server:", cartData);
-
-    // checkProfileCompletion()
-    //   .then((profileComplete) => {
-    //     if (profileComplete) {
-    //       console.log("Profile is complete. Proceeding to save cart data.");
-    //       return saveCartData(cartData);
-    //     } else {
-    //       console.log(
-    //         "Profile is not complete. Redirecting to update profile."
-    //       );
-    //       window.location.href = "{% url 'update_profile' %}";
-    //       throw new Error("Profile not complete");
-    //     }
-    //   })
-    //   .then(() => {
-    //     console.log(
-    //       "Cart data saved successfully. Redirecting to payment success."
-    //     );
-    //     window.location.href = "{% url 'payment_success' %}";
-    //   })
-    //   .catch((error) => console.error("Checkout process failed:", error));
     checkProfileCompletion()
       .then((profileComplete) => {
         if (profileComplete) {
@@ -285,27 +305,27 @@
           .then((data) => {
             console.log("order id:", data);
             var options = {
-                "key": data.key, // Enter the Key ID generated from the Dashboard
-                "amount": data.amount, // Amount is in currency subunits. Default currency is INR. Hence, 50000 refers to 50000 paise
-                "currency": "INR",
-                "name": "U4RAD", //your business name
-                "description": "Payment for services",
-                "image": "https://example.com/your_logo",
-                "order_id": data.order_id, //This is a sample Order ID. Pass the `id` obtained in the response of Step 1
-                "handler": function (response){
-                  updatePaymentStatus(response, "Success", cartData)
-                },
-                "prefill": data.user,
-                "notes": {
-                    "address": "U4RAD Office"
-                },
-                "theme": {
-                    "color": "#3399cc"
-                }
+              key: data.key, // Enter the Key ID generated from the Dashboard
+              amount: data.amount, // Amount is in currency subunits. Default currency is INR. Hence, 50000 refers to 50000 paise
+              currency: "INR",
+              name: "U4RAD", //your business name
+              description: "Payment for services",
+              image: "https://example.com/your_logo",
+              order_id: data.order_id, //This is a sample Order ID. Pass the `id` obtained in the response of Step 1
+              handler: function (response) {
+                updatePaymentStatus(response, "Success", cartData);
+              },
+              prefill: data.user,
+              notes: {
+                address: "U4RAD Office",
+              },
+              theme: {
+                color: "#3399cc",
+              },
             };
             var rzp1 = new Razorpay(options);
-            rzp1.on('payment.failed', function (response){
-              updatePaymentStatus(response, "Failure", null)
+            rzp1.on("payment.failed", function (response) {
+              updatePaymentStatus(response, "Failure", null);
             });
             rzp1.open();
           })

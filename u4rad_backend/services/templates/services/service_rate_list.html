@@ -1,15 +1,113 @@
 {% extends 'services/base_generic.html' %}
-
 {% block content %}
-  <h2>{{ service.service_name }} Rates</h2>
-  <a href="{% url 'service_rate_create' service.id %}">Add New Rate</a>
-  <ul>
+<style>
+
+  a.button {
+    display: inline-block;
+    background-color: #28a745; /* Green color for buttons */
+    color: white;
+    padding: 5px;
+    text-decoration: none;
+    border-radius: 4px;
+    margin-bottom: 10px;
+    font-size: 16px;
+  }
+
+  ul {
+    list-style-type: none;
+    padding: 0;
+  }
+
+  li {
+    margin-bottom: 10px;
+    padding: 10px;
+    background-color: #f8f9fa; /* Light gray background for list items */
+    border: 1px solid #e9ecef;
+    border-radius: 4px;
+  }
+
+  li:hover {
+    background-color: #e9ecef; /* Light gray background darker on hover */
+  }
+
+  li .actions {
+    float: right;
+  }
+  .services-header {
+    padding: 10px 15px;
+    margin-bottom: 15px;
+    border-radius: 4px;
+    font-size: 48px;
+    color: white;
+    text-align: center;
+  }
+  .btn-add-service {
+    top: 10px;
+    right: 10px;
+    background-color: #28a745;
+    color: white;
+    padding:12px;
+    border: 1px solid #e9ecef;
+    border-radius: 4px;
+    font-size: 20px;
+    cursor: pointer;
+    float: inline-end;
+  }
+  .services-container {
+    margin-top: 20px;
+    position: relative; /* Position relative for absolute positioning */
+  }
+  .btn-edit {
+    background-color: #007bff;
+    color: white;
+    float: inline-end;
+    margin-right: 1rem;
+  }
+
+  .btn-delete {
+    background-color: #dc3545;
+    color: white;
+    float: inline-end;
+    margin-right: 1rem;
+  }
+  .service-name {
+    font-size: 18px;
+    font-weight: bold;
+    flex: 1; /* Take up remaining space */
+  }
+
+  .list-group {
+    margin-bottom: 20px;
+  }
+
+  .list-group-item {
+    padding: 15px;
+    margin-bottom: 10px;
+    background-color: #ffffff;
+    border: 1px solid #e9ecef;
+    border-radius: 4px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+</style>
+
+
+<div class="container services-container">
+  <button class="btn-add-service" onclick="window.location.href='{% url 'service_rate_create' service.id %}'"><strong>+ </strong>Add New Rate</button>
+  <div class="services-header">
+    {{ service.service_name }} Rates
+  </div>
+  <ul class="list-group">
     {% for rate in rates %}
-      <li>
-        {{ rate.min_quantity }} - {{ rate.max_quantity }} : {{ rate.rate }} -
-        <a href="{% url 'service_rate_update' service.id rate.id %}">Edit</a> |
-        <a href="{% url 'service_rate_delete' service.id rate.id %}">Delete</a>
+      <li class="list-group-item">
+        <div class="service-name">
+          {{ rate.min_quantity }} - {{ rate.max_quantity }} : {{ rate.rate }}
+          <button class="btn btn-edit" onclick="window.location.href='{% url 'service_rate_update' service.id rate.id %}'">Edit</button>
+          <button class="btn btn-delete" onclick="window.location.href='{% url 'service_rate_delete' service.id rate.id %}'">Delete</button>
+        </div>
       </li>
     {% endfor %}
   </ul>
+</div>
 {% endblock %}

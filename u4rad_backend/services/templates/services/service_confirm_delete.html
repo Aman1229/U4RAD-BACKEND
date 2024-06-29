@@ -1,10 +1,54 @@
 {% extends 'services/base_generic.html' %}
 
 {% block content %}
+<style>
+  /* Custom styles for delete service confirmation */
+  .delete-container {
+    max-width: 600px;
+    margin: 20px auto;
+    padding: 20px;
+    background-color: #ffffff;
+    border: 1px solid #e9ecef;
+    border-radius: 4px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  }
+
+  h2 {
+    margin-bottom: 20px;
+    color: #333;
+  }
+
+  p {
+    margin-bottom: 20px;
+    font-size: 16px;
+    color: #555;
+  }
+
+  form {
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  button[type="submit"] {
+    background-color: #dc3545; /* Red color for delete */
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+  }
+
+  button[type="submit"]:hover {
+    background-color: #c82333; /* Darker red on hover */
+  }
+</style>
+<div class="delete-container">
   <h2>Delete Service</h2>
   <p>Are you sure you want to delete "{{ service.service_name }}"?</p>
   <form method="post">
     {% csrf_token %}
     <button type="submit">Confirm</button>
   </form>
+</div>
 {% endblock %}

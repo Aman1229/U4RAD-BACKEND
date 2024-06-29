@@ -6,6 +6,7 @@ class Cart(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, default=None)
     service = models.ForeignKey(Service, on_delete=models.CASCADE, default=1)
     quantity = models.PositiveIntegerField(default=0)
+    casecount = models.PositiveIntegerField(default=0)
     amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     
 

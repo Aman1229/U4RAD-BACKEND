@@ -25,5 +25,9 @@ urlpatterns = [
     path('logout/', views.logout, name='logout'),
     path("payment/", views.generate_order, name="generate_order"),
     path("home/", views.home, name="home"),
-    path("payment/update-status/", views.update_payment_status, name='update_payment_status')
+    path("quality/", views.quality, name="quality"),
+    path("payment/update-status/", views.update_payment_status, name='update_payment_status'),
+    path('download-invoice/', views.download_invoice, name='download_invoice'),
+    path('coordinator_dashboard/', views.coordinator_dashboard, name='coordinator_dashboard'),
+    path('update_casecount/<int:cart_item_id>/', views.update_casecount, name='update_casecount'),
 ]

@@ -1,0 +1,85 @@
+{% extends 'services/base_generic.html' %} {% block content %} {% load static %}
+<style>
+  /* Ensure the container has some padding */
+  .container {
+    padding: 0 15px;
+  }
+
+  /* Define the grid container */
+  .grid-container {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 5rem;
+
+  }
+
+  /* Media query for larger screens */
+  @media (min-width: 768px) {
+    .grid-container {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+
+  
+
+  /* Card adjustments for better spacing */
+  .card {
+    margin-bottom: 1rem;
+  }
+
+  /* Ensure the 'NEXT' button is aligned to the end */
+  .textend {
+    text-align: center;
+  }
+</style>
+<div class="container my-4 text-center">
+  <div class="grid-container">
+    <div class="card text-white bg-primary mb-3">
+      <div class="card-header">QUALITY</div>
+      <div class="card-body">
+        <p class="card-text">
+          At U4RAD, we always strive for quality, best in the market. We ensure
+          that all the imaging protocols are being followed and reporting is
+          done by the qualified Radiologists. At U4RAD, we implement quality
+          assurance programs to monitor and improve the quality of reporting
+          services. Quality reviewing of the cases is followed including
+          self-review, peer review, superior review, and review based on
+          feedback. Here at U4RAD, we always work to have reporting errors less
+          than what is acceptable by National Institute of Health (NIH) and
+          American medical association (AMA).
+        </p>
+      </div>
+    </div>
+    <div class="card text-white bg-secondary mb-3">
+      <div class="card-header">TURNAROUND TIME</div>
+      <div class="card-body">
+        <p class="card-text">
+          We are available 24*7 for reporting of cases. Emergency cases are
+          reported within 30 min while regular cases of CT and MRI are reported
+          in 3-4 hours. We report Xray and ECG within 1 hour which allows the
+          consultant to make a timely decision.
+        </p>
+      </div>
+    </div>
+    <div class="card text-white bg-success mb-3">
+      <div class="card-header">REQUIREMENT</div>
+      <div class="card-body">
+        <p class="card-text">
+          • Windows 10 or higher (64-bit). • A minimum of 4GB RAM or more. •
+          Minimum 500 GB free disk space. • Computer needs to be connected to
+          the internet and connected to same LAN as your modalities. • Ensure
+          the computer is up to date. • Hospital/Centre needs to share full
+          address and contact details (of Manager/Technician) with email ID.
+        </p>
+      </div>
+    </div>
+  </div>
+  <div class="textend">
+    <a class="btn btn-light mt-3 text-center" href="{% url 'calculate_amount' %}"
+      >NEXT</a
+    >
+  </div>
+</div>
+
+
+{% endblock %}

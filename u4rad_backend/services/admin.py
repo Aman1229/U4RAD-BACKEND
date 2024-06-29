@@ -4,6 +4,7 @@ from .models.profile import Profile
 from .models.CartItem import Cart
 from .models.CartValue import CartValue
 from .models.Order import Order
+from .models.OrderHistory import OrderHistory
 
 class ServiceRateInline(admin.TabularInline):
     model = ServiceRate
@@ -25,3 +26,4 @@ admin.site.register(Profile)
 admin.site.register(Cart)
 admin.site.register(CartValue)
 admin.site.register(Order)
+admin.site.register(OrderHistory)

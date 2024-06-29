@@ -60,13 +60,212 @@
         const amount = parseFloat(document.getElementById(`amount_${serviceId}`).innerText);
         services.push({ serviceId, quantity, amount });
       }
+      
     });
     localStorage.setItem('cart', JSON.stringify(services));
     window.location.href = "{% url 'cart' %}";
   }
+
+  function closePopup() {
+    document.getElementById('topUpPopup').style.display = 'none';
+  }
+
+  function openPopup() {
+    document.getElementById('topUpPopup').style.display = 'block';
+  }
+
 </script>
-<div class="container mt-10">
-  <h1 class="text-center mb-4">Rate Card</h1>
+<style>
+  .container {
+    padding: 15px;
+    margin-top: 5rem;
+    width: 50rem;
+    background-color: white;
+    max-height: 60vh;
+    margin-bottom: 5rem;
+  }
+  .top-right-corner {
+      position: absolute;
+      top: 60px; /* Adjust as needed */
+      right: 10px; /* Adjust as needed */
+  }
+  th, td {
+    width:20rem; 
+  }
+  .modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0, 0, 0, 0.8);
+    padding-top: 60px;
+  }
+  .modal-content {
+    background-color: #fefefe;
+    margin: 5% auto;
+    padding: 20px;
+    border-radius: 10px;
+    border: 1px solid #888;
+    width: 80%;
+    max-height: 60vh;
+    overflow-y: auto;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    max-width: 300px;
+    position: relative;
+    animation: fadeIn 0.5s;
+    
+  }
+  .close {
+    color: black;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    width: 4rem;
+    cursor: pointer;
+    position: relative;
+    
+  }
+  .close:hover,
+  .close:focus {
+    color: black;
+    text-decoration: none;
+  }
+  @keyframes fadeIn {
+    from {opacity: 0;}
+    to {opacity: 1;}
+  }
+  .modal-content h2 {
+    margin-top: 0;
+    color: #333;
+  }
+  .modal-content h3 {
+    margin-top: 20px;
+    color: #555;
+  }
+  .modal-content ul {
+    list-style-type: none;
+    padding: 0;
+  }
+  .modal-content ul li {
+    background: #f9f9f9;
+    margin: 5px 0;
+    padding: 10px;
+    border-radius: 5px;
+    border: 1px solid #ddd;
+  }
+  .modal-content ul li:nth-child(even) {
+    background: #f1f1f1;
+  }
+  .modal-content ul li span {
+    display: block;
+    font-size: 14px;
+    color: #666;
+  }
+  .modal-content ul li strong {
+    display: block;
+    font-size: 16px;
+    color: #333;
+  }
+
+  /* New styles for popup */
+  .top-up-popup {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    overflow: auto;
+    padding-top: 60px;
+  }
+
+  .top-up-popup-content {
+    background-color: #fefefe;
+    margin: 5% auto;
+    padding: 20px;
+    border-radius: 10px;
+    border: 1px solid #888;
+    width: 80%;
+    max-width: 300px;
+    position: relative;
+    animation: fadeIn 0.5s;
+  }
+
+  .top-up-popup-content h2 {
+    margin-top: 0;
+    color: #333;
+  }
+
+  .top-up-popup-content label {
+    display: block;
+    margin-top: 10px;
+  }
+
+  .top-up-popup-content input {
+    width: 100%;
+    padding: 8px;
+    margin-top: 5px;
+    margin-bottom: 10px;
+    box-sizing: border-box;
+  }
+
+  .top-up-popup-content button {
+    width: 100%;
+    padding: 10px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    cursor: pointer;
+    border-radius: 5px;
+  }
+
+  .top-up-popup-content button:hover {
+    background-color: #45a049;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+</style>
+
+<div class="top-right-corner">
+  <a class="btn btn-light mt-3 text-center" href="{% url 'user_dashboard' %}">DASHBOARD</a>
+  <!-- <button class="btn btn-success mt-3 text-center" onclick="openPopup()">TOP-UP</button> -->
+</div>
+
+<!-- <div id="topUpPopup" class="top-up-popup">
+  <div class="top-up-popup-content">
+    <span class="close" onclick="closePopup()">&times;</span>
+    <h2>Top Up Amount</h2>
+    <label for="topup_amount">Enter amount to top up:</label>
+    <input type="number" id="topup_amount" class="form-control" placeholder="Enter amount" />
+    <button onclick="addToCart()" class="btn btn-dark mt-3">Proceed to Top Up</button>
+  </div>
+</div> -->
+
+<div class="row">
+  <div class="modal-content col-sm-3">
+    <h2>Service Rates</h2>
+    {% for service in services %}
+      <h3>{{ service.service_name }}</h3>
+      <ul>
+        {% for rate in service.rates %}
+          <li>Quantity: {{ rate.min_quantity }} - {{ rate.max_quantity }}, Rate: {{ rate.rate }}</li>
+        {% endfor %}
+      </ul>
+    {% endfor %}
+  </div>
+
+
+<div class="container mt-10 col-sm-9">
+  <h1 class="text-center mb-4">Estimator</h1>
   <div class="table-responsive">
     <table class="table table-bordered">
       <thead class="table-dark">
@@ -106,5 +305,6 @@
     </table>
     
   </div>
+</div>
 </div>
 {% endblock %}

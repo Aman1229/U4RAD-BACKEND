@@ -3,6 +3,7 @@ from .models.models import Service, ServiceRate
 from .models.profile import Profile
 from .models.CartItem import Cart
 from .models.CartValue import CartValue
+from .models.OrderHistory import OrderHistory
 from .forms import ServiceForm, ServiceRateForm
 from django.contrib.auth import login as ContribLogin
 from django.contrib.auth import authenticate
@@ -25,6 +26,10 @@ from django.http import HttpResponse
 from django.views.decorators.csrf import csrf_protect
 from django.core.serializers import serialize
 from django.forms.models import model_to_dict
+import openpyxl
+from io import BytesIO
+from django.views.decorators.http import require_POST
+from datetime import timedelta
 
 
 def login(request):
@@ -43,7 +48,7 @@ def login(request):
                     if group == 'coordinator':
                         return redirect('service_list')
                     else:
-                        return redirect('calculate_amount')
+                        return redirect('quality')
                 else:
                     return render(request, 'services/login.html', {'error': 'Invalid login credentials'})
             else:
@@ -53,7 +58,7 @@ def login(request):
             if new_password:
                 new_user = User.objects.create_user(username=phone, password=new_password)
                 ContribLogin(request, new_user)
-                return redirect('calculate_amount')
+                return redirect('quality')
             else:
                 return render(request, 'services/login.html', {'error': 'Please provide a new password to create an account'})
 
@@ -61,12 +66,17 @@ def login(request):
 
 def logout(request):
     ContribLogout(request)
-    return redirect('login')
+    # return redirect('login')
+    return redirect(settings.LOGOUT_REDIRECT_URL)
 
 ############################## RAZORPAY ###################################
 
 def home(request):
     return render(request, "services/index.html")
+
+@login_required
+def quality(request):
+    return render(request, "services/quality.html")    
 
 def update_payment_status(request):
     if request.method == "POST":
@@ -98,22 +108,22 @@ def generate_order(request):
 
         # Create Order in your database
         order = Order.objects.create(
-            name=profile.email, amount=data['grand_total'], provider_order_id=razorpay_order["id"]
+            name=profile.organization, amount=data['grand_total'], provider_order_id=razorpay_order["id"], user=request.user
         )
         order.save()
 
-        return JsonResponse({'message': 'RZP Order generated successfully', 'order_id': order.provider_order_id, 'amount': int(data['grand_total']) * 100, 'key': settings.RAZORPAY_KEY_ID, 'user': { 'name': profile.email, 'email': profile.email, 'contact': profile.user.username }})
+        return JsonResponse({'message': 'RZP Order generated successfully', 'order_id': order.provider_order_id, 'amount': int(data['grand_total']) * 100, 'key': settings.RAZORPAY_KEY_ID, 'user': { 'name': profile.organization, 'email': profile.email, 'contact': profile.user.username }})
 
 
-        return render(
-            request,
-            "services/payment.html",
-            {
-                "callback_url": request.build_absolute_uri("/razorpay/callback/"),
-                "razorpay_key": settings.RAZORPAY_KEY_ID,
-                "order": order,
-            },
-        )
+        # return render(
+        #     request,
+        #     "services/payment.html",
+        #     {
+        #         "callback_url": request.build_absolute_uri("/razorpay/callback/"),
+        #         "razorpay_key": settings.RAZORPAY_KEY_ID,
+        #         "order": order,
+        #     },
+        # )
 
     return render(request, "services/payment.html")
 
@@ -123,8 +133,12 @@ def generate_order(request):
 def user_dashboard(request):
     if request.user.is_authenticated:
         cart_items = Cart.objects.filter(user=request.user)
+        cart_value = CartValue.objects.filter(user=request.user).first()
+        orders = Order.objects.filter(user=request.user)
         context = {
-            'cart_items': cart_items
+            'cart_items': cart_items,
+            'cart_value': cart_value,
+            'orders': orders
         }
         return render(request, 'services/user_dashboard.html', context)
     else:
@@ -132,28 +146,85 @@ def user_dashboard(request):
     
 
 
+def download_invoice(request):
+    if not request.user.is_authenticated:
+        return redirect('login')
+
+    # Get the last order for the current user
+    last_order = Order.objects.filter(user=request.user).order_by('-order_date').first()
+
+    if not last_order:
+        return HttpResponse("No orders found.", content_type='text/plain')
+
+    # Calculate the time window for filtering order histories (±5 minutes)
+    time_window_start = last_order.order_date - timedelta(minutes=5)
+    time_window_end = last_order.order_date + timedelta(minutes=5)
+
+    # Get all order histories for the user within the time window
+    last_order_histories = OrderHistory.objects.filter(
+        user=request.user,
+        order_date__range=(time_window_start, time_window_end)
+    )
+
+    workbook = openpyxl.Workbook()
+    sheet = workbook.active
+    sheet.title = "Invoice"
+
+    # Add order histories to the sheet
+    if last_order_histories.exists():
+        sheet['A1'] = 'Order History'
+        sheet.append(['Service Name', 'Quantity', 'Amount'])
+        for history in last_order_histories:
+            service_name = history.service_name
+            quantity = history.quantity
+            amount = history.amount
+            sheet.append([service_name, quantity, amount])
+
+    sheet.append([])  # Empty row
+
+    # Add the last order details to the sheet
+    if last_order:
+        sheet.append(['Order'])
+        sheet.append(['Order ID', 'Customer Name', 'Amount', 'Status', 'Payment ID', 'Signature ID'])
+        provider_order_id = last_order.provider_order_id
+        name = last_order.name
+        amount = last_order.amount
+        status = last_order.status
+        payment_id = last_order.payment_id
+        signature_id = last_order.signature_id
+        sheet.append([provider_order_id, name, amount, status, payment_id, signature_id])
+
+    # Save the workbook to a BytesIO object
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = 'attachment; filename=invoice.xlsx'
+    buffer = BytesIO()
+    workbook.save(buffer)
+    buffer.seek(0)
+    response.write(buffer.read())
+    return response
+
+@login_required
 def coordinator_dashboard(request):
-    if request.group.coordinator:
-        cart_items = Cart.objects.all
-        context = {
-            'cart_items': cart_items
-        }
-        return render(request, 'services/coordinator_dashboard.html', context)
-    else:
-        return redirect('login')    
+    # Fetch all profiles and cart items
+    profiles = Profile.objects.select_related('user').all()
+    cart_items = Cart.objects.select_related('user', 'service').all()
+    name = Order.objects.select_related('user').all()
 
+    context = {
+        'profiles': profiles,
+        'cart_items': cart_items,
+    }
 
-# def update_profile(request):
-#     user_profile, created = Profile.objects.get_or_create(user=request.user)
+    return render(request, 'services/coordinator_dashboard.html', context)
 
-#     if request.method == 'POST':
-#         form = ProfileForm(request.POST, instance=user_profile)
-#         if form.is_valid():
-#             form.save()  # Redirect to payment success after updating the profile
-#     else:
-#         form = ProfileForm(instance=user_profile)
+@require_POST
+def update_casecount(request, cart_item_id):
+    cart_item = get_object_or_404(Cart, pk=cart_item_id)
+    casecount = request.POST.get('casecount')
+    cart_item.casecount = casecount
+    cart_item.save()
+    return redirect('coordinator_dashboard')
 
-#     return render(request, 'services/update_profile.html', {'form': form})
 
 def update_profile(request):
     user_profile, created = Profile.objects.get_or_create(user=request.user)
@@ -169,57 +240,55 @@ def update_profile(request):
     return render(request, 'services/update_profile.html', {'form': form})
 
 
-
+########################################### 26-06 ###############################################
 @login_required
 def save_cart_data(request):
-    print("I'm here---1")
     if request.method == "POST":
         try:
-            print("I'm here---2")
             data = json.loads(request.body)
             user = request.user
-            cart_items = data['cart_items']
+            cart_items = data.get('cart_items', [])
             promo_code = data.get('promo_code', '')
-            total_amount = data['total_amount']
-            discount = data['discount']
-            grand_total = data['grand_total']
-            print("I'm here---3", data)
-
-            # Save or update CartValue
+            total_amount = data.get('total_amount', 0)
+            discount = data.get('discount', 0)
+            grand_total = data.get('grand_total', 0)
             cart_value, created = CartValue.objects.get_or_create(user=user)
             if not created:
-                cart_value.promo_code = promo_code
+                # Append the new values to the existing ones
                 cart_value.total_amount += total_amount
                 cart_value.discount += discount
                 cart_value.grand_total += grand_total
-                cart_value.save()
-                print(f"Updated CartValue instance: {cart_value}")
             else:
-                cart_value.promo_code = promo_code
+                # If it's a new CartValue instance, set the values
                 cart_value.total_amount = total_amount
                 cart_value.discount = discount
                 cart_value.grand_total = grand_total
-                cart_value.save()
-                print(f"Created new CartValue instance: {cart_value}")
+            cart_value.promo_code = promo_code
+            cart_value.save()
 
+            # Process each cart item
             for item in cart_items:
-                print("I'm here---4")
                 quantity = item.get('quantity')
                 amount = item.get('amount')
                 service_name = item.get('service_name')
-                print(f"Processing item: service_name={service_name}, quantity={quantity}, amount={amount}")
 
                 # Ensure all required fields are present
-                if quantity is None or amount is None or service_name is None:
+                if not all([quantity, amount, service_name]):
                     return JsonResponse({'error': 'Missing fields in cart item'}, status=400)
 
-                # Retrieve the Service instance using service_name
                 try:
+                    # Retrieve the Service instance using service_name
                     service = Service.objects.get(service_name=service_name)
                 except Service.DoesNotExist:
                     return JsonResponse({'error': f'Service "{service_name}" not found'}, status=404)
 
-                print("I'm here---6")
+                # Save the order to OrderHistory
+                OrderHistory.objects.create(
+                    user=user,
+                    service_name=service_name,
+                    quantity=quantity,
+                    amount=amount
+                )
 
                 # Check if a cart with the same user and service already exists
                 cart_instance, created = Cart.objects.get_or_create(user=user, service=service)
@@ -228,28 +297,20 @@ def save_cart_data(request):
                 if not created:
                     cart_instance.quantity += quantity
                     cart_instance.amount += amount
-                    cart_instance.save()
-                    print(f"Updated Cart instance: {cart_instance}")
                 else:
                     # If it doesn't exist, create a new cart instance
                     cart_instance.quantity = quantity
                     cart_instance.amount = amount
-                    cart_instance.save()
-                    print(f"Created new Cart instance for service: {service.service_name}")
+                cart_instance.save()
 
-                print("I'm here---7")
-
-            return JsonResponse({'message': 'Cart data saved successfully', 'cart': cart_value.pk})
+            return JsonResponse({'message': 'Cart data saved successfully', 'cart': cart_value.pk}, status=201)
         except Service.DoesNotExist:
             return JsonResponse({'error': 'Service not found'}, status=404)
         except Exception as e:
-            print(f"Error: {e}")  # Log the error
             return JsonResponse({'error': str(e)}, status=500)
 
     return JsonResponse({'error': 'Invalid request method'}, status=400)
-
-
-
+#################################################################################################
 
 
 def payment_success(request):
@@ -327,7 +388,7 @@ def convert_decimal(value):
 
 
 
-
+@login_required
 def calculate_amount(request):
     services = Service.objects.filter(is_active=True).prefetch_related('rates')
     services_with_rates = []
@@ -339,7 +400,8 @@ def calculate_amount(request):
         services_with_rates.append({
             'id': service.id,
             'service_name': service.service_name,
-            'rates_json': json.dumps(rates)
+            'rates_json': json.dumps(rates),
+            'rates': rates,
         })
 
     return render(request, 'services/calculate_amount.html', {'services': services_with_rates})

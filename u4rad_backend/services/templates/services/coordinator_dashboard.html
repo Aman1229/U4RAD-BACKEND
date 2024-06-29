@@ -1,0 +1,102 @@
+{% extends 'services/base_generic.html' %}
+{% block content %}
+{% load static %}
+<!-- Include these scripts if not already included -->
+<script src="https://code.jquery.com/jquery-3.2.1.slim.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.11.0/umd/popper.min.js"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js"></script>
+
+<style>
+  .container {
+    padding: 15px;
+    margin-top: 5rem;
+    margin-bottom: 5rem;
+    background-color: aliceblue;
+    max-height: 60vh;
+    overflow-y: auto;
+  }
+</style>
+
+<div class="container mt-10">
+  <!-- Profile Details Table -->
+  <table class="table table-striped" id="profile-table" border="1">
+    <thead>
+      <tr>
+        <th>User</th>
+        <th>Organization Name</th>
+        <th>Email</th>
+        <th>Address</th>
+        <th>Organization</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for profile in profiles %}
+      <tr>
+        <td>{{ profile.user.username }}</td>
+        <td>{{ profile.user.orders.first.name }}</td>
+        <td>{{ profile.email }}</td>
+        <td>{{ profile.address }}</td>
+        <td>{{ profile.organization }}</td>
+        <td>
+          <button
+            class="btn btn-primary"
+            type="button"
+            data-toggle="collapse"
+            data-target="#cart-items-table-{{ profile.user.id }}"
+            aria-expanded="false"
+            aria-controls="cart-items-table-{{ profile.user.id }}"
+          >
+            Toggle Cart Items
+          </button>
+        </td>
+      </tr>
+      <tr class="collapse" id="cart-items-table-{{ profile.user.id }}">
+        <td colspan="5">
+          <table class="table table-striped" border="1">
+            <thead>
+              <tr>
+                <th>Service Name</th>
+                <th>Quantity</th>
+                <th>Case Count</th>
+                <th>Amount</th>
+                <th>Update Case Count</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for cart_item in cart_items %}
+              {% if cart_item.user.id == profile.user.id %}
+              <tr>
+                <td>{{ cart_item.service.service_name }}</td>
+                <td>{{ cart_item.quantity }}</td>
+                <td>{{ cart_item.casecount }}</td>
+                <td>{{ cart_item.amount }}</td>
+                <td>
+                  <form
+                    method="post"
+                    action="{% url 'update_casecount' cart_item.id %}"
+                  >
+                    {% csrf_token %}
+                    <input
+                      type="number"
+                      name="casecount"
+                      value="{{ cart_item.casecount }}"
+                    />
+                    <button type="submit" class="btn btn-sm btn-success">
+                      Update
+                    </button>
+                  </form>
+                </td>
+              </tr>
+              {% endif %}
+              {% endfor %}
+            </tbody>
+          </table>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% endblock %}

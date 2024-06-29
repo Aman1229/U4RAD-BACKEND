@@ -1,21 +1,210 @@
-{% extends 'services/base_generic.html' %}
+{% extends 'services/base_generic.html' %} {% block content %} {% load static %}
+<style>
+  .container {
+    padding: 15px;
+    margin-top: 10rem;
+    background-color: aliceblue;
+  }
+  .top-right-corner {
+    position: absolute;
+    top: 60px; /* Adjust as needed */
+    right: 10px; /* Adjust as needed */
+  }
 
-{% block content %}
-{% load static %}
-<table>
+  .top-left-corner {
+    position: absolute;
+    top: 60px; /* Adjust as needed */
+    left: 10px; /* Adjust as needed */
+    background: #ffffff;
+    width: 200px;
+    border-radius: 5px;
+    padding: 10px;
+    font-size: larger;
+    color: black;
+  }
+  .textend {
+    text-align: center;
+  }
+  .modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0, 0, 0, 0.8);
+    padding-top: 60px;
+  }
+  .modal-content {
+    background-color: #fefefe;
+    margin: 5% auto;
+    padding: 20px;
+    border-radius: 10px;
+    border: 1px solid #888;
+    width: 80%;
+    max-height: 60vh;
+    overflow-y: auto;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    max-width: 800px;
+    position: relative;
+    animation: fadeIn 0.5s;
+    
+  }
+  .close {
+    color: black;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    width: 4rem;
+    cursor: pointer;
+    position: relative;
+    
+  }
+  .close:hover,
+  .close:focus {
+    color: black;
+    text-decoration: none;
+  }
+  @keyframes fadeIn {
+    from {opacity: 0;}
+    to {opacity: 1;}
+  }
+  .modal-content h2 {
+    margin-top: 0;
+    color: #333;
+  }
+  .modal-content h3 {
+    margin-top: 20px;
+    color: #555;
+  }
+  .modal-content ul {
+    list-style-type: none;
+    padding: 0;
+  }
+  .modal-content ul li {
+    background: #f9f9f9;
+    margin: 5px 0;
+    padding: 10px;
+    border-radius: 5px;
+    border: 1px solid #ddd;
+  }
+  .modal-content ul li:nth-child(even) {
+    background: #f1f1f1;
+  }
+  .modal-content ul li span {
+    display: block;
+    font-size: 14px;
+    color: #666;
+  }
+  .modal-content ul li strong {
+    display: block;
+    font-size: 16px;
+    color: #333;
+  }
+</style>
+<div class="top-right-corner">
+  <a class="btn btn-light mt-3 text-center" href="{% url 'calculate_amount' %}"
+    >Rate Card</a
+  >
+</div>
+<div class="top-left-corner mt-3 text-center">
+  {% if cart_value %}
+      <p>Total Amount: ₹{{ cart_value.total_amount }}</p>
+  {% else %}
+      <p>₹0</p>
+  {% endif %}
+</div>
+<div class="container mt-10">
+  <table class="table table-striped" id="cart-items-table">
     <thead>
-        <tr>
-            <th>Modality</th>
-            <th>Expected Cases</th>
-        </tr>
+      <tr>
+        <th scope="col">Modality</th>
+        <th scope="col">Expected Cases</th>
+        <th scope="col">Cases till now</th>
+        <th scope="col">Balance Cases</th>
+      </tr>
     </thead>
     <tbody>
-        {% for item in cart_items %}
-        <tr>
-            <td>{{ item.service.service_name }}</td>
-            <td>{{ item.quantity }}</td>
-        </tr>
-        {% endfor %}
+      {% for item in cart_items %}
+      <tr>
+        <td>{{ item.service.service_name }}</td>
+        <td class="quantity">{{ item.quantity }}</td>
+        <td class="casecount">{{ item.casecount }}</td>
+        <td class="balance"></td>
+      </tr>
+      {% endfor %}
     </tbody>
-</table>
+  </table>
+</div>
+<div class="textend">
+  <button class="btn btn-light mt-3 text-center" onclick="openPopup()">VIEW SUMMARY</button>
+</div>
+<div id="detailsPopup" class="modal">
+  <div class="modal-content">
+    <button class="close btn btn-danger" onclick="closePopup()">&times;</button>
+    <h2>Cart Items</h2>
+        {% if cart_items %}
+            <ul>
+                {% for item in cart_items %}
+                    <li>{{ item.service.service_name }} - {{ item.quantity }} - {{ item.amount }}</li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p>No items in cart.</p>
+        {% endif %}
+
+        <h2>Order History</h2>
+        {% if orders %}
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Order ID</th>
+                        <th>Customer Name</th>
+                        <th>Amount</th>
+                        <th>Status</th>
+                        <th>Payment ID</th>
+                        <th>Signature ID</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for order in orders %}
+                        <tr>
+                            <td>{{ order.provider_order_id }}</td>
+                            <td>{{ order.name }}</td>
+                            <td>{{ order.amount }}</td>
+                            <td>{{ order.status }}</td>
+                            <td>{{ order.payment_id }}</td>
+                            <td>{{ order.signature_id }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p>No orders found.</p>
+        {% endif %}
+
+        <button class="btn btn-success" onclick="window.location.href='{% url 'download_invoice' %}'">Download Invoice</button>
+  </div>
+</div>
+<script>
+  function closePopup() {
+    document.getElementById('detailsPopup').style.display = 'none';
+  }
+
+  function openPopup() {
+    document.getElementById('detailsPopup').style.display = 'block';
+  }
+  // JavaScript to calculate and display balance cases
+  document.addEventListener("DOMContentLoaded", function () {
+    const rows = document.querySelectorAll("#cart-items-table tbody tr");
+    rows.forEach((row) => {
+      const quantity = parseFloat(row.querySelector(".quantity").textContent);
+      const casecount = parseFloat(row.querySelector(".casecount").textContent);
+      const balance = quantity - casecount;
+      row.querySelector(".balance").textContent = balance.toFixed(0);
+    });
+  });
+</script>
 {% endblock %}
